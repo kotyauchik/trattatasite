@@ -3,49 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Картинка на весь экран</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            overflow: hidden; /* убирает прокрутку */
-            height: 100vh;
-            width: 100vw;
-        }
-        
-        .fullscreen-img {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* вся картинка видна */
-            background-color: #000; /* чёрный фон по краям, если есть пустое место */
-        }
-        
-        /* Если хочешь, чтобы картинка заполняла весь экран (может обрезаться) */
-        /* .fullscreen-img {
-            object-fit: cover;
-        } */
-    </style>
+    <title>Счётчик Кучи</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <img src="photo_2025-12-25_14-06-47.jpg" alt="Картинка" class="fullscreen-img">
-    
-    <script>
-        // Проверяем загрузку картинки
-        document.querySelector('.fullscreen-img').onload = function() {
-            console.log('Картинка загружена, размеры: ' + this.naturalWidth + 'x' + this.naturalHeight);
-        };
-        
-        // Если картинка не загрузилась
-        document.querySelector('.fullscreen-img').onerror = function() {
-            alert('Ошибка загрузки картинки! Убедись, что файл IMG_20260120_213338_949.jpg находится в той же папке, что и этот HTML-файл.');
-        };
-    </script>
+    <div class="container">
+        <div class="card">
+            <!-- Красивая рамка для фото -->
+            <div class="photo-frame">
+                <div class="frame-top"></div>
+                <div class="frame-left"></div>
+                <img src="photo_2025-12-25_14-06-47.jpg" alt="Милый котик" class="photo">
+                <div class="frame-right"></div>
+                <div class="frame-bottom"></div>
+                <div class="frame-corner tl"><i class="fas fa-paw"></i></div>
+                <div class="frame-corner tr"><i class="fas fa-paw"></i></div>
+                <div class="frame-corner bl"><i class="fas fa-paw"></i></div>
+                <div class="frame-corner br"><i class="fas fa-paw"></i></div>
+            </div>
+            
+            <!-- Счётчик и кнопка -->
+            <div class="counter-section">
+                <div class="counter-display">
+                    <i class="fas fa-skull-crossbones"></i>
+                    <div class="counter-number" id="counter">0</div>
+                    <i class="fas fa-skull-crossbones"></i>
+                </div>
+                
+                <p class="warning-text">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    При каждом нажатии кнопки в мире умирает одна куча
+                    <i class="fas fa-exclamation-triangle"></i>
+                </p>
+                
+                <button id="clickBtn" class="click-button">
+                    <span class="button-text">ПОЖЕРТВОВАТЬ КУЧЕ</span>
+                    <span class="button-icon"><i class="fas fa-hand-pointer"></i></span>
+                </button>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <i class="fas fa-history"></i>
+                        <span id="lastClick">Никогда</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-users"></i>
+                        <span id="today">0 сегодня</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Футер -->
+            <div class="footer">
+                <p>Счётчик хранится в GitHub Issues | Каждый клик создаёт Issue</p>
+                <p class="github-link">
+                    <i class="fab fa-github"></i>
+                    <a href="#" id="repoLink" target="_blank">Посмотреть все "жертвы"</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
