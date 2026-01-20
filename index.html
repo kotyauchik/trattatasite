@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Картинка на весь экран</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden; /* убирает прокрутку */
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .fullscreen-img {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* вся картинка видна */
+            background-color: #000; /* чёрный фон по краям, если есть пустое место */
+        }
+        
+        /* Если хочешь, чтобы картинка заполняла весь экран (может обрезаться) */
+        /* .fullscreen-img {
+            object-fit: cover;
+        } */
+    </style>
+</head>
+<body>
+    <img src="photo_2025-12-25_14-06-47.jpg" alt="Картинка" class="fullscreen-img">
+    
+    <script>
+        // Проверяем загрузку картинки
+        document.querySelector('.fullscreen-img').onload = function() {
+            console.log('Картинка загружена, размеры: ' + this.naturalWidth + 'x' + this.naturalHeight);
+        };
+        
+        // Если картинка не загрузилась
+        document.querySelector('.fullscreen-img').onerror = function() {
+            alert('Ошибка загрузки картинки! Убедись, что файл IMG_20260120_213338_949.jpg находится в той же папке, что и этот HTML-файл.');
+        };
+    </script>
+</body>
+</html>
