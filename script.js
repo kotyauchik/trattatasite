@@ -1,9 +1,9 @@
-// Конфигурация - ЗАМЕНИ ЭТИ ДАННЫЕ!
+// Конфигурация
 const CONFIG = {
-    GITHUB_TOKEN: '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', // Твой GitHub токен
-    REPO_OWNER: 'kotyauchik', // Твой GitHub username
-    REPO_NAME: 'trattatasite', // Название репозитория
-    ISSUE_LABEL: 'counter-clicks' // Метка для issue
+    GITHUB_TOKEN: 'ghp_твой_токен', // ЗАМЕНИ!
+    REPO_OWNER: 'kotyouchik',
+    REPO_NAME: 'trattata',
+    COUNTER_FILE: 'counter.json' // Будем хранить в файле, а не в Issues
 };
 
 // DOM элементы
@@ -11,120 +11,142 @@ const counterEl = document.getElementById('counter');
 const clickBtn = document.getElementById('clickBtn');
 const lastClickEl = document.getElementById('lastClick');
 const todayEl = document.getElementById('today');
-const repoLinkEl = document.getElementById('repoLink');
 
 // Состояние
 let clickCount = 0;
 let todayCount = 0;
 let lastClickTime = null;
 
-// API URL
-const API_URL = `https://api.github.com/repos/${CONFIG.REPO_OWNER}/${CONFIG.REPO_NAME}`;
-
-// Заголовки для запросов
-const headers = {
-    'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
-    'Accept': 'application/vnd.github.v3+json'
-};
-
 // Инициализация
 async function init() {
-    // Ссылка на issues
-    repoLinkEl.href = `https://github.com/${CONFIG.REPO_OWNER}/${CONFIG.REPO_NAME}/issues?q=label:${CONFIG.ISSUE_LABEL}`;
-    
-    // Загружаем текущий счет
     await loadCounter();
     updateDisplay();
 }
 
-// Загружаем счетчик из GitHub Issues
+// Загружаем счетчик
 async function loadCounter() {
     try {
-        // Ищем issue с меткой
+        // Пробуем загрузить из файла в репозитории
         const response = await fetch(
-            `${API_URL}/issues?labels=${CONFIG.ISSUE_LABEL}&state=all`,
-            { headers }
+            `https://raw.githubusercontent.com/${CONFIG.REPO_OWNER}/${CONFIG.REPO_NAME}/main/${CONFIG.COUNTER_FILE}`,
+            { cache: 'no-store' }
         );
         
-        if (!response.ok) throw new Error('GitHub API error');
-        
-        const issues = await response.json();
-        
-        if (issues.length > 0) {
-            // Берем последнее issue
-            const latestIssue = issues[0];
-            clickCount = issues.length;
-            
-            // Парсим дату последнего клика
-            lastClickTime = new Date(latestIssue.created_at);
-            
-            // Считаем клики за сегодня
-            const today = new Date().toDateString();
-            todayCount = issues.filter(issue => 
-                new Date(issue.created_at).toDateString() === today
-            ).length;
+        if (response.ok) {
+            const data = await response.json();
+            clickCount = data.total || 0;
+            todayCount = data.today || 0;
+            lastClickTime = data.lastClick ? new Date(data.lastClick) : null;
         }
     } catch (error) {
-        console.error('Error loading counter:', error);
-        // Локальное хранение на случай ошибки
-        const saved = localStorage.getItem('clickCounter');
-        if (saved) {
-            const data = JSON.parse(saved);
-            clickCount = data.count || 0;
-            lastClickTime = data.lastClick ? new Date(data.lastClick) : null;
-            todayCount = data.todayCount || 0;
-        }
+        console.log('Файл счетчика не найден, начинаем с нуля');
+    }
+    
+    // Пробуем локальное сохранение
+    const localData = localStorage.getItem('clickCounter');
+    if (localData) {
+        const data = JSON.parse(localData);
+        clickCount = Math.max(clickCount, data.count || 0);
     }
 }
 
-// Создаем новое issue при клике
+// Сохраняем клик
 async function registerClick() {
-    // Анимация кнопки
+    // Анимация
     clickBtn.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-        clickBtn.style.transform = '';
-    }, 150);
+    setTimeout(() => clickBtn.style.transform = '', 150);
     
-    // Увеличиваем счетчики
+    // Обновляем счетчики
     clickCount++;
-    todayCount++;
-    lastClickTime = new Date();
+    const now = new Date();
+    lastClickTime = now;
     
-    // Сохраняем локально на случай ошибки
+    // Обновляем сегодняшний счет
+    const today = now.toDateString();
+    const lastDate = localStorage.getItem('lastClickDate');
+    
+    if (lastDate === today) {
+        todayCount++;
+    } else {
+        todayCount = 1;
+        localStorage.setItem('lastClickDate', today);
+    }
+    
+    // Сохраняем локально
     localStorage.setItem('clickCounter', JSON.stringify({
         count: clickCount,
-        lastClick: lastClickTime.toISOString(),
+        lastClick: now.toISOString(),
         todayCount: todayCount
     }));
     
     // Обновляем отображение
     updateDisplay();
     
+    // Пробуем сохранить в GitHub
+    await saveToGitHub();
+}
+
+// Сохраняем в GitHub
+async function saveToGitHub() {
     try {
-        // Создаем новое issue в GitHub
-        const issueData = {
-            title: `Клик #${clickCount} - ${new Date().toLocaleString('ru-RU')}`,
-            body: `Пользователь пожертвовал кучу в ${new Date().toLocaleString('ru-RU')}`,
-            labels: [CONFIG.ISSUE_LABEL]
-        };
-        
-        const response = await fetch(`${API_URL}/issues`, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(issueData)
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create issue');
+        // 1. Получаем SHA текущего файла (если есть)
+        let sha = null;
+        try {
+            const fileInfo = await fetch(
+                `https://api.github.com/repos/${CONFIG.REPO_OWNER}/${CONFIG.REPO_NAME}/contents/${CONFIG.COUNTER_FILE}`,
+                {
+                    headers: {
+                        'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+            
+            if (fileInfo.ok) {
+                const data = await fileInfo.json();
+                sha = data.sha;
+            }
+        } catch (e) {
+            // Файла еще нет
         }
         
-        console.log('Issue created successfully');
+        // 2. Подготавливаем данные
+        const counterData = {
+            total: clickCount,
+            today: todayCount,
+            lastClick: lastClickTime.toISOString(),
+            updated: new Date().toISOString()
+        };
+        
+        const content = btoa(JSON.stringify(counterData, null, 2));
+        
+        // 3. Обновляем файл
+        const response = await fetch(
+            `https://api.github.com/repos/${CONFIG.REPO_OWNER}/${CONFIG.REPO_NAME}/contents/${CONFIG.COUNTER_FILE}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `Обновлен счетчик: ${clickCount} кликов`,
+                    content: content,
+                    sha: sha // Если файл существует
+                })
+            }
+        );
+        
+        if (response.ok) {
+            console.log('✅ Счетчик сохранен в GitHub');
+        } else {
+            const error = await response.json();
+            console.warn('⚠️ Не удалось сохранить в GitHub:', error.message);
+        }
         
     } catch (error) {
-        console.error('Error creating issue:', error);
-        // Показываем сообщение об ошибке
-        alert('Не удалось сохранить клик в GitHub. Попробуй позже!');
+        console.error('❌ Ошибка при сохранении в GitHub:', error);
     }
 }
 
@@ -149,20 +171,26 @@ function updateDisplay() {
     
     todayEl.textContent = `${todayCount} сегодня`;
     
-    // Анимация счетчика
+    // Анимация
     counterEl.style.transform = 'scale(1.2)';
-    setTimeout(() => {
-        counterEl.style.transform = 'scale(1)';
-    }, 300);
+    setTimeout(() => counterEl.style.transform = 'scale(1)', 300);
 }
 
-// Обработчик клика
+// События
 clickBtn.addEventListener('click', registerClick);
-
-// Инициализируем при загрузке
 document.addEventListener('DOMContentLoaded', init);
 
-// Обновляем счетчик каждые 30 секунд
+// Автосохранение каждые 10 кликов
+let pendingSaves = 0;
+clickBtn.addEventListener('click', () => {
+    pendingSaves++;
+    if (pendingSaves >= 10) {
+        saveToGitHub();
+        pendingSaves = 0;
+    }
+});
+
+// Периодическая синхронизация
 setInterval(async () => {
     await loadCounter();
     updateDisplay();
